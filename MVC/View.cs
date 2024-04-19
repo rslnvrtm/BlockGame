@@ -32,6 +32,7 @@ namespace BlocksGame.MVC
             blockSprite = new SpriteBatch(core.GraphicsDevice);
             blockTexture = core.Content.Load<Texture2D>("block");
         }
+
         private void Draw(object sender, EventArgs args)
         {
             for (var x = 0; x < renderMapWidth; x++)
