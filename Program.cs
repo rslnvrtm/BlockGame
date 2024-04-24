@@ -4,7 +4,7 @@
     {
         public static void Main()
         {
-            using var game = new BlocksGame.GameCore();
+            using var game = new GameCore();
             game.Run();
         }
     }

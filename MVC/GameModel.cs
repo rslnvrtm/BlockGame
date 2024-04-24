@@ -21,15 +21,28 @@ namespace BlocksGame.MVC.Models
 
         private void Update(object sender, EventArgs args)
         {
+            if (OnUpdate == null)
+                return;
+
             var controller = (Controller)sender;
-            if (OnUpdate != null && args is PlaceBlockEvent)
+            if (args is PlaceBlockEvent)
             {
                 var blockPlaceEvent = ((PlaceBlockEvent)args);
+                if (blockPlaceEvent.BlockMatrix == null)
+                    return;
+
                 if (TryPlaceBlock(blockPlaceEvent.Position, blockPlaceEvent.BlockMatrix))
+                {
                     OnUpdate(this, new UpdateMapEvent(Map));
+                    blockPlaceEvent.OnSuccess();
+                }
                 else
                     OnUpdate(this, new PlaceFailEvent());
             }
+
+            // pass all the events we want to go through
+            else
+                OnUpdate(this, args);
         }
 
         private void InitMap(int width, int height)
@@ -43,11 +56,14 @@ namespace BlocksGame.MVC.Models
         }
         private bool CanPlace(Point position, bool[,] matrix)
         {
+            if (matrix == null)
+                return false;
+
             var yLength = matrix.GetLength(0);
             var xLength = matrix.GetLength(1);
 
-            if (position.X + xLength - 1 >= MapWidth 
-                || position.Y + yLength - 1 >= MapHeight)
+            if (position.X + xLength - 1 >= MapWidth || position.X + xLength - 1 < 0
+                || position.Y + yLength - 1 >= MapHeight || position.Y + yLength - 1 < 0)
                 return false;
 
             for (var x = 0; x < xLength; x++)
@@ -67,6 +83,9 @@ namespace BlocksGame.MVC.Models
 
         private void PlaceBlock(Point position, bool[,] matrix)
         {
+            if (matrix == null)
+                return;
+
             var yLength = matrix.GetLength(0);
             var xLength = matrix.GetLength(1);
 

@@ -9,6 +9,14 @@ namespace BlocksGame
 {
     public class GameCore : Game
     {
+        public const int MaxCountToChoose = 3;
+        public const int BlockWidth = 50; // px
+        public const int PreviewBlockWitdh = 25; // px
+        public const int MaxPreviewElementHeight = 5; // in preview blocks
+        public const int MapWidth = 8; // in blocks
+        public const int MapHeight = 8; // in blocks
+        public static Point MousePos;
+
         public event OnEventCallback OnInit;
         public event OnEventCallback OnLoad;
         public event OnEventCallback OnUpdate;
@@ -18,14 +26,16 @@ namespace BlocksGame
         private readonly GameModel gameModel;
         private readonly View view;
         private readonly Controller controller;
+        private ButtonState previousMouseState;
         public GameCore()
         {
             deviceManager = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
+            previousMouseState = ButtonState.Released;
 
-            controller = new Controller();
-            gameModel = new GameModel(controller, 8, 8);
+            controller = new Controller(this);
+            gameModel = new GameModel(controller, MapWidth, MapHeight);
             view = new View(gameModel, this);
         }
 
@@ -47,8 +57,14 @@ namespace BlocksGame
             if (OnUpdate != null)
                 OnUpdate(this, null);
 
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
-                Exit();
+            var mouseState = Mouse.GetState();
+            MousePos = mouseState.Position;
+
+            if (mouseState.LeftButton == ButtonState.Released && previousMouseState == ButtonState.Pressed)
+                controller.HandleClick(mouseState.Position);
+
+            previousMouseState = mouseState.LeftButton;
+
 
             base.Update(gameTime);
         }
