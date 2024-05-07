@@ -6,7 +6,7 @@ namespace BlocksGame.MVC.Events
     public class PlaceBlockEvent : EventArgs
     {
         public readonly bool[,] BlockMatrix;
-        // position of upper left corner of BlockMatrix
+        // position of upper left corner of BlockMatrix(in blocks)
         public readonly Point Position;
         public readonly Action OnSuccess;
 

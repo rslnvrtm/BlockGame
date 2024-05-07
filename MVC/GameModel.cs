@@ -1,22 +1,27 @@
 using System;
 using Microsoft.Xna.Framework;
 using BlocksGame.MVC.Events;
+using BlocksGame.MVC.Abstract;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace BlocksGame.MVC.Models
+namespace BlocksGame.MVC
 {
-    public class GameModel
+    public class GameModel : DependsOnState
     {
         public event OnEventCallback OnUpdate;
         public bool[,] Map { get; private set; }
         public readonly int MapWidth;
         public readonly int MapHeight;
+        private int score;
 
-        public GameModel(Controller controller, int mapWidth, int mapHeight)
+        public GameModel(StateManager stateManager, Controller controller, int mapWidth, int mapHeight) : base(stateManager)
         {
             controller.OnUpdate += Update;
             InitMap(mapWidth, mapHeight);
             MapWidth = mapWidth;
             MapHeight = mapHeight;
+            score = 0;
         }
 
         private void Update(object sender, EventArgs args)
@@ -27,7 +32,7 @@ namespace BlocksGame.MVC.Models
             var controller = (Controller)sender;
             if (args is PlaceBlockEvent)
             {
-                var blockPlaceEvent = ((PlaceBlockEvent)args);
+                var blockPlaceEvent = (PlaceBlockEvent)args;
                 if (blockPlaceEvent.BlockMatrix == null)
                     return;
 
@@ -35,13 +40,20 @@ namespace BlocksGame.MVC.Models
                 {
                     OnUpdate(this, new UpdateMapEvent(Map));
                     blockPlaceEvent.OnSuccess();
+
+                    var linesRemoved = RemoveLines();
+                    if (linesRemoved != 0)
+                    {
+                        score += linesRemoved * 10;
+
+                        OnUpdate(this, new UpdateMapEvent(Map));
+                        OnUpdate(this, new UpdateScoreEvent(score));
+                    }
                 }
                 else
                     OnUpdate(this, new PlaceFailEvent());
             }
-
-            // pass all the events we want to go through
-            else
+            else // pass all other events through
                 OnUpdate(this, args);
         }
 
@@ -56,7 +68,7 @@ namespace BlocksGame.MVC.Models
         }
         private bool CanPlace(Point position, bool[,] matrix)
         {
-            if (matrix == null)
+            if (matrix == null || position.X < 0 || position.Y < 0)
                 return false;
 
             var yLength = matrix.GetLength(0);
@@ -108,6 +120,77 @@ namespace BlocksGame.MVC.Models
 
             PlaceBlock(position, matrix);
             return true;
+        }
+
+        private IEnumerable<(int Index, IEnumerable<bool> Row)> GetMapRows()
+        {
+            for (var y = 0; y < MapHeight; y++)
+            {
+                var row = new List<bool>();
+                for (var x = 0; x < MapWidth; x++)
+                    row.Add(Map[y, x]);
+
+                yield return (y, row);
+            }
+        }
+
+        private IEnumerable<(int Index, IEnumerable<bool> Column)> GetMapColumns()
+        {
+            for (var x = 0; x < MapWidth; x++)
+            {
+                var column = new List<bool>();
+                for (var y = 0; y < MapHeight; y++)
+                    column.Add(Map[y, x]);
+
+                yield return (x, column);
+            }
+        }
+
+        private void RemoveLine(int index, bool y = true)
+        {
+            for (var i = 0; i < (y ? MapHeight : MapWidth); i++)
+            {
+                if (y)
+                    Map[index, i] = false;
+                else
+                    Map[i, index] = false;
+            }
+        }
+
+        private int RemoveLines()
+        {
+            var rows = GetMapRows();
+            var columns = GetMapColumns();
+
+            var removed = 0;
+            // store indices in two separate lists because we need to handle cross of lines
+            var rowsToRemove = new List<int>();
+            var columnsToRemove = new List<int>();
+
+            foreach (var row in rows)
+            {
+                if (row.Row.All(el => el))
+                {
+                    rowsToRemove.Add(row.Index);
+                    removed++;
+                }
+            }
+
+            foreach (var column in columns)
+            {
+                if (column.Column.All(el => el))
+                {
+                    columnsToRemove.Add(column.Index);
+                    removed++;
+                }
+            }
+
+            foreach (var index in rowsToRemove)
+                RemoveLine(index);
+            foreach (var index in columnsToRemove)
+                RemoveLine(index, false);
+
+            return removed;
         }
     }
 }
