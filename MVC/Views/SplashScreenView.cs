@@ -5,39 +5,23 @@ using BlocksGame.MVC.Views;
 
 namespace BlocksGame.MVC
 {
-    public class SplashScreenView
+    public class SplashScreenView : StateDependentView
     {
-        private readonly MainView mainView;
-        private List<IBaseUIElement> ui;
+        public SplashScreenView(List<IBaseUIElement> drawList)
+            : base(GameState.SplashScreen, drawList) {}
 
-        public SplashScreenView(GameModel game, GameCore core, MainView view, List<IBaseUIElement> splashScreenUi)
+        public override void Draw(object sender, EventArgs args) {}
+
+        public override void Reset() {}
+
+        public override void DrawUi()
         {
-            mainView = view;
-            ui = splashScreenUi;
-            core.OnLoad += Load;
+            foreach (var el in UiElements)
+                el.Draw(ViewManager.SpriteBatch, ViewManager.ButtonFont);
         }
 
-        public void Draw(object sender, EventArgs args)
-        {
-            DrawUi(ui);
-        }
+        public override void Update(object sender, EventArgs args) {}
 
-        public void Update(object sender, EventArgs args)
-        {
-            var game = (GameModel)sender;
-            // nothing to dispatch yet...
-        }
-
-        private void Load(object sender, EventArgs args)
-        {
-            var core = (GameCore)sender;
-            // nothing to load yet...
-        }
-
-        private void DrawUi(List<IBaseUIElement> ui)
-        {
-            foreach (var el in ui)
-                el.Draw(mainView.SpriteBatch, mainView.ButtonFont);
-        }
+        public override void Load(object sender, EventArgs args) {}
     }
 }

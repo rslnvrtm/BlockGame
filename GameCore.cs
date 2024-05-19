@@ -8,9 +8,6 @@ using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
 
-// todo change font
-// todo make hint system
-
 namespace BlocksGame
 {
     public class GameCore : Game
@@ -35,11 +32,9 @@ namespace BlocksGame
         private GraphicsDeviceManager deviceManager;
         private readonly StateManager stateManager;
         private readonly GameModel gameModel;
-        private readonly MainView view;
+        private readonly ViewManager view;
         private readonly Controller controller;
         private ButtonState previousMouseState;
-        private List<IBaseUIElement> splashScreenUi;
-        private List<IBaseUIElement> inGameUi;
 
         public GameCore()
         {
@@ -47,9 +42,21 @@ namespace BlocksGame
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
             previousMouseState = ButtonState.Released;
-            splashScreenUi = new List<IBaseUIElement>();
-            inGameUi = new List<IBaseUIElement>();
 
+            var viewList = CreateUi();
+
+            stateManager = new StateManager();
+            controller = new Controller(stateManager, this, viewList);
+            gameModel = new GameModel(stateManager, controller, this, MapWidth, MapHeight);
+            view = new ViewManager(stateManager, gameModel, this, viewList);
+        }
+
+        private List<StateDependentView> CreateUi()
+        {
+            var splashScreenUi = new List<IBaseUIElement>();
+            var inGameUi = new List<IBaseUIElement>();
+
+            // splashscreen
             var playButton = new Button(this, "button", "PLAY", new Rectangle(WindowWidth / 2 - 100, WindowHeight / 2, 200, 60));
             var exitButton = new Button(this, "button", "EXIT", new Rectangle(WindowWidth / 2 - 100, WindowHeight / 2 + 80, 200, 60));
             playButton.OnClick += (_, _) => stateManager.State = GameState.InGame;
@@ -57,11 +64,23 @@ namespace BlocksGame
             splashScreenUi.Add(playButton);
             splashScreenUi.Add(exitButton);
 
-            stateManager = new StateManager();
-            controller = new Controller(stateManager, this, splashScreenUi, inGameUi);
-            gameModel = new GameModel(stateManager, controller, MapWidth, MapHeight);
-            view = new MainView(stateManager, gameModel, this, splashScreenUi, inGameUi);
+            // ingame
+            var restartButton = new Button(this, "restart", null, new Rectangle(WindowWidth - 50, 10, 40, 40));
+            restartButton.OnClick += (_, _) => Restart();
+            inGameUi.Add(restartButton);
 
+            return new List<StateDependentView>
+            {
+                new SplashScreenView(splashScreenUi),
+                new InGameView(inGameUi)
+            };
+        }
+
+        public void Restart()
+        {
+            view.Reset();
+            controller.Reset();
+            gameModel.Reset();
         }
 
         protected override void Initialize()

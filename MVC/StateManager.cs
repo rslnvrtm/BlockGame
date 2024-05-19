@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using BlocksGame.MVC.Events;
-using Microsoft.Xna.Framework.Input;
-
 namespace BlocksGame.MVC
 {
     public enum GameState

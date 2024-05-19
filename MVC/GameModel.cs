@@ -14,13 +14,21 @@ namespace BlocksGame.MVC
         public readonly int MapWidth;
         public readonly int MapHeight;
         private int score;
-
-        public GameModel(StateManager stateManager, Controller controller, int mapWidth, int mapHeight) : base(stateManager)
+        private GameCore core;
+        
+        public GameModel(StateManager stateManager, Controller controller, GameCore core, int mapWidth, int mapHeight) : base(stateManager)
         {
             controller.OnUpdate += Update;
             InitMap(mapWidth, mapHeight);
             MapWidth = mapWidth;
             MapHeight = mapHeight;
+            score = 0;
+            this.core = core;
+        }
+
+        public void Reset()
+        {
+            InitMap(MapWidth, MapHeight);
             score = 0;
         }
 
@@ -30,9 +38,8 @@ namespace BlocksGame.MVC
                 return;
 
             var controller = (Controller)sender;
-            if (args is PlaceBlockEvent)
+            if (args is PlaceBlockEvent blockPlaceEvent)
             {
-                var blockPlaceEvent = (PlaceBlockEvent)args;
                 if (blockPlaceEvent.BlockMatrix == null)
                     return;
 
@@ -53,8 +60,39 @@ namespace BlocksGame.MVC
                 else
                     OnUpdate(this, new PlaceFailEvent());
             }
+            else if (args is GameOverCheckEvent gameOverCheckEvent)
+            {
+                if (IsGameOver(gameOverCheckEvent.ChooseList))
+                {
+                    OnUpdate(this, new GameOverEvent(score));
+                    core.Restart();
+                }
+            }
             else // pass all other events through
                 OnUpdate(this, args);
+        }
+
+        private bool IsGameOver(List<bool[,]> chooseList)
+        {
+            if (chooseList.All(el => el is null))
+                return false;
+
+            for (var x = 0; x < MapWidth; x++)
+            {
+                for (var y = 0; y < MapHeight; y++)
+                {
+                    if (Map[y, x])
+                        continue;
+
+                    foreach (var matrix in chooseList)
+                    {
+                        if (CanPlace(new Point(x, y), matrix))
+                            return false;
+                    }
+                }
+            }
+
+            return true;
         }
 
         private void InitMap(int width, int height)
@@ -66,6 +104,7 @@ namespace BlocksGame.MVC
                     Map[y, x] = false;
             }
         }
+
         private bool CanPlace(Point position, bool[,] matrix)
         {
             if (matrix == null || position.X < 0 || position.Y < 0)

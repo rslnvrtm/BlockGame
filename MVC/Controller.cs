@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using BlocksGame.MVC.UI.Interfaces;
+using BlocksGame.MVC.Views;
 
 namespace BlocksGame.MVC
 {
@@ -21,19 +22,24 @@ namespace BlocksGame.MVC
         private int pickedBlockIndex;
         private Random random;
         private ButtonState previousMouseState;
-        private readonly List<IBaseUIElement> splashScreenUi;
-        private readonly List<IBaseUIElement> inGameUi;
+        private readonly List<StateDependentView> views;
 
-        public Controller(StateManager stateManager, GameCore core, 
-                          List<IBaseUIElement> splashScreenUi, List<IBaseUIElement> inGameUi) : base(stateManager)
+        public Controller(StateManager stateManager, GameCore core, List<StateDependentView> viewList) 
+            : base(stateManager)
         {
             blocksToChoose = new List<bool[,]>();
             random = new Random();
             previousMouseState = ButtonState.Released;
-            this.splashScreenUi = splashScreenUi;
-            this.inGameUi = inGameUi;
+            views = viewList;
             StateManager.OnStateChange += Initialize;
             core.OnUpdate += Update;
+        }
+
+        public void Reset()
+        {
+            blocksToChoose = new List<bool[,]>();
+            previousMouseState = ButtonState.Released;
+            UpdateBlocks();
         }
 
         private void Update(object sender, EventArgs args)
@@ -48,34 +54,24 @@ namespace BlocksGame.MVC
 
         public void HandleClick(Point position)
         {
-            switch (StateManager.State)
+            foreach (var view in views)
             {
-                case GameState.InGame:
-                    HandleClickInGame(position);
+                if (view.ActiveState == StateManager.State)
+                {
+                    if (HandleUiClick(position, view.UiElements))
+                        return;
                     break;
-
-                case GameState.SplashScreen:
-                    HandleClickSplashScreen(position);
-                    break;
-
-                default:
-                    throw new NotSupportedException($"Current state({StateManager.State}) is not supported by controller or invalid!");
+                }
             }
-        }
 
-        private void HandleClickSplashScreen(Point position)
-        {
-            if (HandleUiClick(position, splashScreenUi))
-                return;
-        }
-
-        private void HandleClickInGame(Point position)
-        {
-            if (HandleUiClick(position, inGameUi))
+            if (StateManager.State != GameState.InGame)
                 return;
 
             if (position.X < GameCore.MapWidth * GameCore.BlockWidth + GameCore.DrawOffsetX)
-                PlaceBlock();
+            {
+                if (pickedBlock is not null)
+                    PlaceBlock();
+            }
             else
             {
                 var blockIndex = (position.Y - GameCore.DrawOffsetY) / (GameCore.PreviewBlockWitdh * GameCore.MaxPreviewElementHeight);
@@ -87,11 +83,11 @@ namespace BlocksGame.MVC
         {
             foreach (var el in ui)
             {
-                if (el is not UIHandlesClick)
-                    continue;
-                
-                if (((UIHandlesClick)el).HandleClick(position))
-                    return true;
+                if (el is UIHandlesClick handlesClick)
+                {
+                    if (handlesClick.HandleClick(position))
+                        return true;
+                }
             }
 
             return false;
@@ -101,7 +97,7 @@ namespace BlocksGame.MVC
 
         private void PickBlock(int index)
         {
-            if (pickedBlock != null)
+            if (pickedBlock is not null)
             {
                 blocksToChoose[pickedBlockIndex] = pickedBlock;
                 pickedBlock = null;
@@ -110,7 +106,7 @@ namespace BlocksGame.MVC
                 return;
             }
 
-            if (index < 0 || index > GameCore.MaxCountToChoose - 1)
+            if (index < 0 || index > GameCore.MaxCountToChoose - 1 || blocksToChoose[index] is null)
                 return;
 
             pickedBlock = blocksToChoose[index];
@@ -121,16 +117,21 @@ namespace BlocksGame.MVC
 
         private void PlaceBlock()
         {
+            var yOffset = -pickedBlock.GetLength(0) * GameCore.BlockWidth / 2;
+            var xOffset = -pickedBlock.GetLength(1) * GameCore.BlockWidth / 2;
+
             OnUpdate(this, new PlaceBlockEvent(
                 pickedBlock, 
-                new Point((GameCore.MousePos.X - GameCore.DrawOffsetX) / GameCore.BlockWidth,
-                          (GameCore.MousePos.Y - GameCore.DrawOffsetY) / GameCore.BlockWidth),
+                new Point((GameCore.MousePos.X - GameCore.DrawOffsetX + xOffset) / GameCore.BlockWidth,
+                          (GameCore.MousePos.Y - GameCore.DrawOffsetY + yOffset) / GameCore.BlockWidth),
                 () => 
                 {
                     pickedBlock = null;
                     UpdateBlocks();
                 })
             );
+
+            OnUpdate(this, new GameOverCheckEvent(blocksToChoose));
         }
 
         public void UpdateBlocks()
@@ -143,6 +144,7 @@ namespace BlocksGame.MVC
                 blocksToChoose.Add(BlockTemplates.AllTemplates[random.Next() % BlockTemplates.AllTemplates.Count]);
 
             OnUpdate(this, new UpdateChooseListEvent(blocksToChoose));
+            OnUpdate(this, new GameOverCheckEvent(blocksToChoose));
         }
     }
 }

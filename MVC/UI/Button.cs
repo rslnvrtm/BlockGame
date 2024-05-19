@@ -32,7 +32,8 @@ namespace BlocksGame.MVC.UI
         {
             spriteBatch.Begin();
             spriteBatch.Draw(texture, rect, Color.White);
-            spriteBatch.DrawString(spriteFont, text, new Vector2(rect.X + rect.Width / 4, rect.Y + rect.Height / 6), Color.White);
+            if (text is not null)
+                spriteBatch.DrawString(spriteFont, text, new Vector2(rect.X + rect.Width / 4, rect.Y + rect.Height / 6), Color.White);
             spriteBatch.End();
         }
 
