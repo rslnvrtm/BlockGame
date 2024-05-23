@@ -5,11 +5,9 @@ namespace BlocksGame.MVC.Events
 {
     public class PickBlockEvent : EventArgs
     {
-        public readonly bool[,] BlockMatrix;
+        public readonly BlockType[,] BlockMatrix;
 
-        public PickBlockEvent(bool[,] blockMatrix)
-        {
-            BlockMatrix = blockMatrix;
-        }
+        public PickBlockEvent(BlockType[,] blockMatrix)
+            => BlockMatrix = blockMatrix;
     }
 }

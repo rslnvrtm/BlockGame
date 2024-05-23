@@ -6,9 +6,9 @@ namespace BlocksGame.MVC.Events
 {
     public class UpdateChooseListEvent : EventArgs
     {
-        public readonly List<bool[,]> NewList;
+        public readonly List<BlockType[,]> NewList;
 
-        public UpdateChooseListEvent(List<bool[,]> newList)
+        public UpdateChooseListEvent(List<BlockType[,]> newList)
         {
             NewList = newList;
         }

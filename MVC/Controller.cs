@@ -17,8 +17,8 @@ namespace BlocksGame.MVC
     {
         public event OnEventCallback OnUpdate;
         
-        private List<bool[,]> blocksToChoose;
-        private bool[,] pickedBlock;
+        private List<BlockType[,]> blocksToChoose;
+        private BlockType[,] pickedBlock;
         private int pickedBlockIndex;
         private Random random;
         private ButtonState previousMouseState;
@@ -27,7 +27,7 @@ namespace BlocksGame.MVC
         public Controller(StateManager stateManager, GameCore core, List<StateDependentView> viewList) 
             : base(stateManager)
         {
-            blocksToChoose = new List<bool[,]>();
+            blocksToChoose = new List<BlockType[,]>();
             random = new Random();
             previousMouseState = ButtonState.Released;
             views = viewList;
@@ -37,13 +37,20 @@ namespace BlocksGame.MVC
 
         public void Reset()
         {
-            blocksToChoose = new List<bool[,]>();
+            blocksToChoose = new List<BlockType[,]>();
             previousMouseState = ButtonState.Released;
             UpdateBlocks();
         }
 
         private void Update(object sender, EventArgs args)
         {
+            // GetHintEvent initially goes w/o blocks list since fired through button callback
+            if (args is GetHintEvent getHintEvent)
+            {
+                OnUpdate(this, new GetHintEvent(blocksToChoose));
+                return;
+            }
+            
             var mouseState = Mouse.GetState();
 
             if (mouseState.LeftButton == ButtonState.Released && previousMouseState == ButtonState.Pressed)
@@ -119,11 +126,14 @@ namespace BlocksGame.MVC
         {
             var yOffset = -pickedBlock.GetLength(0) * GameCore.BlockWidth / 2;
             var xOffset = -pickedBlock.GetLength(1) * GameCore.BlockWidth / 2;
+            
+            var xPosition = (int)Math.Round((GameCore.MousePos.X - GameCore.DrawOffsetX + xOffset) / (float)GameCore.BlockWidth, 0);
+            var yPosition = (int)Math.Round((GameCore.MousePos.Y - GameCore.DrawOffsetY + yOffset) / (float)GameCore.BlockWidth, 0);
+
 
             OnUpdate(this, new PlaceBlockEvent(
                 pickedBlock, 
-                new Point((GameCore.MousePos.X - GameCore.DrawOffsetX + xOffset) / GameCore.BlockWidth,
-                          (GameCore.MousePos.Y - GameCore.DrawOffsetY + yOffset) / GameCore.BlockWidth),
+                new Point(xPosition, yPosition),
                 () => 
                 {
                     pickedBlock = null;

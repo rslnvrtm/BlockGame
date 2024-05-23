@@ -2,44 +2,52 @@ using System.Collections.Generic;
 
 namespace BlocksGame
 {
+    public enum BlockType
+    {
+        None,
+        Normal,
+        Bomb
+    }
+
     public static class BlockTemplates
     {
         // todo add more blocks
-        public static readonly bool[,] Dot = { { true } };
-        public static readonly bool[,] LineTwo = { { true, true } };
-        public static readonly bool[,] LineThree = { { true, true, true } };
-        public static readonly bool[,] LineFour = { { true, true, true, true } };
-        public static readonly bool[,] LineFive = { { true, true, true, true, true } };
-        public static readonly bool[,] LineWithRightDot =
+        public static readonly BlockType[,] Dot = { { BlockType.Normal } };
+        public static readonly BlockType[,] LineTwo = { { BlockType.Normal, BlockType.Normal } };
+        public static readonly BlockType[,] LineThree = { { BlockType.Normal, BlockType.Normal, BlockType.Normal } };
+        public static readonly BlockType[,] LineFour = { { BlockType.Normal, BlockType.Normal, BlockType.Normal, BlockType.Normal } };
+        public static readonly BlockType[,] LineFive = { { BlockType.Normal, BlockType.Normal, BlockType.Normal, BlockType.Normal, BlockType.Normal } };
+        public static readonly BlockType[,] LineWithRightDot =
         {
-            { true, true },
-            { true, false },
-            { true, false }
+            { BlockType.Normal, BlockType.Normal },
+            { BlockType.Normal, BlockType.None },
+            { BlockType.Normal, BlockType.None }
         };
-        public static readonly bool[,] SmallCorner =
+        public static readonly BlockType[,] SmallCorner =
          {
-            { true, true },
-            { true, false }
+            { BlockType.Normal, BlockType.Normal },
+            { BlockType.Normal, BlockType.None }
         };
-        public static readonly bool[,] BigCorner =
+        public static readonly BlockType[,] BigCorner =
         {
-            { true, true, true },
-            { true, false, false },
-            { true, false, false },
+            { BlockType.Normal, BlockType.Normal, BlockType.Normal },
+            { BlockType.Normal, BlockType.None, BlockType.None },
+            { BlockType.Normal, BlockType.None, BlockType.None },
         };
-        public static readonly bool[,] SquareTwo =
+        public static readonly BlockType[,] SquareTwo =
         {
-            { true, true },
-            { true, true }
+            { BlockType.Normal, BlockType.Normal },
+            { BlockType.Normal, BlockType.Normal }
         }; 
-        public static readonly bool[,] SquareThree =
+        public static readonly BlockType[,] SquareThree =
          {
-            { true, true, true },
-            { true, true, true },
-            { true, true, true }
+            { BlockType.Normal, BlockType.Normal, BlockType.Normal },
+            { BlockType.Normal, BlockType.Normal, BlockType.Normal },
+            { BlockType.Normal, BlockType.Normal, BlockType.Normal }
         };
+        public static readonly BlockType[,] Bomb = { { BlockType.Bomb } };
 
-        public static List<bool[,]> AllTemplates => new List<bool[,]> 
+        public static List<BlockType[,]> AllTemplates => new List<BlockType[,]> 
         { 
             Dot, 
             LineTwo, 
@@ -50,7 +58,8 @@ namespace BlocksGame
             SmallCorner,
             BigCorner,
             SquareTwo,
-            SquareThree
+            SquareThree,
+            Bomb
         };
     }
 }

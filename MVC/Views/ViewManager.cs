@@ -2,11 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using BlocksGame.MVC.Events;
-using BlocksGame.MVC.Views;
 using BlocksGame.MVC.Abstract;
-using Microsoft.Xna.Framework.Input;
-using BlocksGame.MVC.UI.Interfaces;
 
 namespace BlocksGame.MVC.Views
 {

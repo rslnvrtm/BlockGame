@@ -1,4 +1,6 @@
 ﻿using BlocksGame.MVC;
+using BlocksGame.MVC.Events;
+using BlocksGame.MVC.Helpers;
 using BlocksGame.MVC.UI;
 using BlocksGame.MVC.UI.Interfaces;
 using BlocksGame.MVC.Views;
@@ -34,20 +36,18 @@ namespace BlocksGame
         private readonly GameModel gameModel;
         private readonly ViewManager view;
         private readonly Controller controller;
-        private ButtonState previousMouseState;
 
         public GameCore()
         {
             deviceManager = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
-            previousMouseState = ButtonState.Released;
 
             var viewList = CreateUi();
 
             stateManager = new StateManager();
             controller = new Controller(stateManager, this, viewList);
-            gameModel = new GameModel(stateManager, controller, this, MapWidth, MapHeight);
+            gameModel = new GameModel(stateManager, controller, this, new BasicHintProvider(), MapWidth, MapHeight);
             view = new ViewManager(stateManager, gameModel, this, viewList);
         }
 
@@ -66,8 +66,11 @@ namespace BlocksGame
 
             // ingame
             var restartButton = new Button(this, "restart", null, new Rectangle(WindowWidth - 50, 10, 40, 40));
+            var hintButton = new Button(this, "lightbulb", null, new Rectangle(WindowWidth - 100, 10, 40, 40));
             restartButton.OnClick += (_, _) => Restart();
+            hintButton.OnClick += (_, _) => OnUpdate(this, new GetHintEvent());
             inGameUi.Add(restartButton);
+            inGameUi.Add(hintButton);
 
             return new List<StateDependentView>
             {

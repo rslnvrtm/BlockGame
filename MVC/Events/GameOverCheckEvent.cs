@@ -5,9 +5,9 @@ namespace BlocksGame.MVC.Events
 {
     public class GameOverCheckEvent : EventArgs 
     {
-        public readonly List<bool[,]> ChooseList;
+        public readonly List<BlockType[,]> ChooseList;
 
-        public GameOverCheckEvent(List<bool[,]> chooseList)
+        public GameOverCheckEvent(List<BlockType[,]> chooseList)
             => ChooseList = chooseList;
     }
 }

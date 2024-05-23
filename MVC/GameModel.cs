@@ -4,19 +4,21 @@ using BlocksGame.MVC.Events;
 using BlocksGame.MVC.Abstract;
 using System.Collections.Generic;
 using System.Linq;
+using BlocksGame.MVC.Helpers.Interfaces;
 
 namespace BlocksGame.MVC
 {
     public class GameModel : DependsOnState
     {
         public event OnEventCallback OnUpdate;
-        public bool[,] Map { get; private set; }
+        public BlockType[,] Map { get; private set; }
         public readonly int MapWidth;
         public readonly int MapHeight;
         private int score;
         private GameCore core;
+        private IHintProvider hintProvider;
         
-        public GameModel(StateManager stateManager, Controller controller, GameCore core, int mapWidth, int mapHeight) : base(stateManager)
+        public GameModel(StateManager stateManager, Controller controller, GameCore core, IHintProvider hintProvider, int mapWidth, int mapHeight) : base(stateManager)
         {
             controller.OnUpdate += Update;
             InitMap(mapWidth, mapHeight);
@@ -24,6 +26,7 @@ namespace BlocksGame.MVC
             MapHeight = mapHeight;
             score = 0;
             this.core = core;
+            this.hintProvider = hintProvider;
         }
 
         public void Reset()
@@ -68,11 +71,17 @@ namespace BlocksGame.MVC
                     core.Restart();
                 }
             }
+            else if (args is GetHintEvent getHintEvent)
+            {
+                var hint = hintProvider.GetHint(Map, getHintEvent.blocksToChoose);
+                if (hint.HasValue)
+                    OnUpdate(this, new DisplayHintEvent(hint.Value.position, hint.Value.block));
+            }
             else // pass all other events through
                 OnUpdate(this, args);
         }
 
-        private bool IsGameOver(List<bool[,]> chooseList)
+        private bool IsGameOver(List<BlockType[,]> chooseList)
         {
             if (chooseList.All(el => el is null))
                 return false;
@@ -81,7 +90,7 @@ namespace BlocksGame.MVC
             {
                 for (var y = 0; y < MapHeight; y++)
                 {
-                    if (Map[y, x])
+                    if (Map[y, x] != BlockType.None)
                         continue;
 
                     foreach (var matrix in chooseList)
@@ -97,15 +106,15 @@ namespace BlocksGame.MVC
 
         private void InitMap(int width, int height)
         {
-            Map = new bool[height, width];
+            Map = new BlockType[height, width];
             for (var x = 0; x < width; x++)
             {
                 for (var y = 0; y < height; y++)
-                    Map[y, x] = false;
+                    Map[y, x] = BlockType.None;
             }
         }
 
-        private bool CanPlace(Point position, bool[,] matrix)
+        private bool CanPlace(Point position, BlockType[,] matrix)
         {
             if (matrix == null || position.X < 0 || position.Y < 0)
                 return false;
@@ -121,10 +130,10 @@ namespace BlocksGame.MVC
             {
                 for (var y = 0; y < yLength; y++)
                 {
-                    if (!matrix[y, x])
+                    if (matrix[y, x] == BlockType.None)
                         continue;
 
-                    if (Map[position.Y + y, position.X + x])
+                    if (Map[position.Y + y, position.X + x] != BlockType.None)
                         return false;
                 }
             }
@@ -132,7 +141,7 @@ namespace BlocksGame.MVC
             return true;
         }
 
-        private void PlaceBlock(Point position, bool[,] matrix)
+        private void PlaceBlock(Point position, BlockType[,] matrix)
         {
             if (matrix == null)
                 return;
@@ -144,15 +153,15 @@ namespace BlocksGame.MVC
             {
                 for (var y = 0; y < yLength; y++)
                 {
-                    if (!matrix[y, x])
+                    if (matrix[y, x] == BlockType.None)
                         continue;
 
-                    Map[position.Y + y, position.X + x] = true;
+                    Map[position.Y + y, position.X + x] = matrix[y, x];
                 }
             }
         }
 
-        private bool TryPlaceBlock(Point position, bool[,] matrix)
+        private bool TryPlaceBlock(Point position, BlockType[,] matrix)
         {
             if (!CanPlace(position, matrix))
                 return false;
@@ -161,11 +170,11 @@ namespace BlocksGame.MVC
             return true;
         }
 
-        private IEnumerable<(int Index, IEnumerable<bool> Row)> GetMapRows()
+        private IEnumerable<(int Index, IEnumerable<BlockType> Row)> GetMapRows()
         {
             for (var y = 0; y < MapHeight; y++)
             {
-                var row = new List<bool>();
+                var row = new List<BlockType>();
                 for (var x = 0; x < MapWidth; x++)
                     row.Add(Map[y, x]);
 
@@ -173,11 +182,11 @@ namespace BlocksGame.MVC
             }
         }
 
-        private IEnumerable<(int Index, IEnumerable<bool> Column)> GetMapColumns()
+        private IEnumerable<(int Index, IEnumerable<BlockType> Column)> GetMapColumns()
         {
             for (var x = 0; x < MapWidth; x++)
             {
-                var column = new List<bool>();
+                var column = new List<BlockType>();
                 for (var y = 0; y < MapHeight; y++)
                     column.Add(Map[y, x]);
 
@@ -190,10 +199,27 @@ namespace BlocksGame.MVC
             for (var i = 0; i < (y ? MapHeight : MapWidth); i++)
             {
                 if (y)
-                    Map[index, i] = false;
+                    Map[index, i] = BlockType.None;
                 else
-                    Map[i, index] = false;
+                    Map[i, index] = BlockType.None;
             }
+        }
+
+        private void RemoveExplosionArea(int x, int y)
+        {
+            for (var dx = -1; dx < 2; dx++)
+            {
+                for (var dy = -1; dy < 2; dy++)
+                {
+                    if (dx == 0 && dy == 0)
+                        continue;
+
+                    if (dx + x >= MapWidth || dx + x < 0 || dy + y >= MapHeight || dy + y < 0)
+                        continue;
+
+                    Map[dy + y, dx + x] = BlockType.None;
+                }
+            }    
         }
 
         private int RemoveLines()
@@ -205,22 +231,38 @@ namespace BlocksGame.MVC
             // store indices in two separate lists because we need to handle cross of lines
             var rowsToRemove = new List<int>();
             var columnsToRemove = new List<int>();
-
+            // 3x3 area around each exploded bomb will be removed
+            var explodedBombs = new List<(int x, int y)>();
+            
             foreach (var row in rows)
             {
-                if (row.Row.All(el => el))
+                if (row.Row.All(el => el != BlockType.None))
                 {
                     rowsToRemove.Add(row.Index);
                     removed++;
+
+                    if (row.Row.Contains(BlockType.Bomb))
+                    {
+                        var bombs = row.Row.Select((el, i) => (type: el, x: i)).Where(el => el.type == BlockType.Bomb);
+                        foreach (var bomb in bombs)
+                            explodedBombs.Add((bomb.x, row.Index));
+                    }
                 }
             }
 
             foreach (var column in columns)
             {
-                if (column.Column.All(el => el))
+                if (column.Column.All(el => el != BlockType.None))
                 {
                     columnsToRemove.Add(column.Index);
                     removed++;
+
+                    if (column.Column.Contains(BlockType.Bomb))
+                    {
+                        var bombs = column.Column.Select((el, i) => (type: el, y: i)).Where(el => el.type == BlockType.Bomb);
+                        foreach (var bomb in bombs)
+                            explodedBombs.Add((column.Index, bomb.y));
+                    }
                 }
             }
 
@@ -228,6 +270,8 @@ namespace BlocksGame.MVC
                 RemoveLine(index);
             foreach (var index in columnsToRemove)
                 RemoveLine(index, false);
+            foreach (var bomb in explodedBombs)
+                RemoveExplosionArea(bomb.x, bomb.y);
 
             return removed;
         }

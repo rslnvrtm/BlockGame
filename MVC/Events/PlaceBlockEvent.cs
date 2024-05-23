@@ -5,12 +5,12 @@ namespace BlocksGame.MVC.Events
 {
     public class PlaceBlockEvent : EventArgs
     {
-        public readonly bool[,] BlockMatrix;
+        public readonly BlockType[,] BlockMatrix;
         // position of upper left corner of BlockMatrix(in blocks)
         public readonly Point Position;
         public readonly Action OnSuccess;
 
-        public PlaceBlockEvent(bool[,] blockMatrix, Point position, Action onSuccess)
+        public PlaceBlockEvent(BlockType[,] blockMatrix, Point position, Action onSuccess)
         {
             BlockMatrix = blockMatrix;
             Position = position;
